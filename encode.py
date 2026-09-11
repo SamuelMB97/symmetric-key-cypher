@@ -2,7 +2,14 @@ import data_boxes as db
 
 
 def str_w_len(bits:str):
-    return f"{bits} length: {len(bits)}"
+    length = len(bits)
+    bits_list = [b for b in bits]
+    new_len = int((length / 4) * 5)
+    for n in range(4, new_len, 5):
+        bits_list.insert(n, " ")
+
+    as_str = "".join(bits_list)
+    return f"{as_str} length: {length}"
 
 
 def hex_to_bin(hex:str):
@@ -19,10 +26,18 @@ def loadkeys(master_key64):
     Takes a 64-bit master key and returns a generator for 16 28-bit
     subkeys
     """
+    print(f"{str_w_len(master_key64)} - Key as bin")
     k_perm_i_56 = permute(master_key64, db.pc_1, change_size=True)
+
+    print(f"{str_w_len(k_perm_i_56)} - k_perm_i_56")
+
 
     c28 = k_perm_i_56[:28]
     d28 = k_perm_i_56[28:]
+
+    #print(f"{str_w_len(c28)} - c28")
+    #print(f"{str_w_len(d28)} - d28")
+
 
     def rotate_left(side):
         return side[1:] + side[0]
@@ -35,6 +50,9 @@ def loadkeys(master_key64):
         for _ in range(rotate_by):
             c28 = rotate_left(c28)
             d28 = rotate_left(d28)
+
+        #print(f"{str_w_len(c28)} - C")
+        #print(f"{str_w_len(d28)} - D")
 
         cd56 = c28 + d28
         yield permute(cd56, db.pc_2, change_size=True)
@@ -110,16 +128,18 @@ def run_s_boxes(subsets8_6):
 
 def f_box(R32, subkey48):
     bits48 = permute(R32, db.expand, change_size=True)
+    #print(f"{str_w_len(bits48)} - bits48")
+
     bits48 = xor(bits48, subkey48)
-    print(f"{str_w_len(bits48)} - bits48")
+    #print(f"{str_w_len(bits48)} - bits48")
 
     subsets8_6 = as_subsets(bits48, 6)
 
     s_boxed32 = run_s_boxes(subsets8_6)
-    print(f"{str_w_len(s_boxed32)} - s_boxed32")
+    #print(f"{str_w_len(s_boxed32)} - s_boxed32")
 
     f_out32 = permute(s_boxed32, db.p)
-    print(f"{str_w_len(f_out32)} - f_out32")
+    #print(f"{str_w_len(f_out32)} - f_out32")
 
     return f_out32
     
@@ -141,56 +161,68 @@ def xor(a, b):
 
 
 def main(message_hex, key):
+    print(message_hex)
 
+    print(f"{str_w_len(hex_to_bin(message_hex))} - bits48")
     # Plaintext split into 64 bits and...
     # Initial permutation IP
-    bits64 = permute(hex_to_bin(message_hex), db.p_i)
-    #print(f"{str_w_len(perm_i)} - perm_i")
+    bits64 = permute(hex_to_bin(message_hex), db.ip)
+
+    print(f"{str_w_len(bits64)} - bits64 initial perm.")
 
     
     # Structure for code (blocks of 64, key of 56)
     # DES encryption - 16 rounds, different subkey each round
 
     subkeys = loadkeys(hex_to_bin(key))
-
+    
+    # Split L0 and R0 (64 --> 32, 32)
+    L32 = bits64[:32]
+    R32 = bits64[32:]
+    
     # Each round:
     round_num = 0
     for subkey48 in subkeys:
+        #print(f"{str_w_len(subkey48)} - subkey48")
         round_num += 1
-        print(f"Round number: {round_num}")
-        print(f"{str_w_len(subkey48)} - subkey48") 
+        #print(f"Round number: {round_num}")
+        #print(f"{str_w_len(subkey48)} - subkey48") 
     
-        # Split L0 and R0 (64 --> 32, 32)
-        L32_i = bits64[:32]
-        R32_i = bits64[32:]
+        #print(f"{str_w_len(L32)} - L32") 
+        #print(f"{str_w_len(R32)} - R32") 
+
 
         # R0 copied to L1 (32 --> 32)
-        L32_f = R32_i
+        L32_next = R32
 
-        f_out32 = f_box(R32_i, subkey48)
-        R32_f = xor(L32_i, f_out32)
-        print("did f_box and xor...")
-        print("MADE IT THIS FAR! :)")
-        assert 0
-        # f_box with R0 and K1 (32, 48)
-            # expansion (32 --> 48)
-            # EXOR with K1 (48, 48 --> 48)
-            # split output from exor into 8 groups of 6
-            # each 6 bits goes through a different s_box (8x(6 --> 4))
-            # put them back together, (8x6 --> 32)
-            # Permute them (matrix for that)
-            # spits out 32
-        # XOR with L0 and output from f_box (32, 32 --> 32)
-            # This becomes R1 (32)
-        # R0 copied to L1 (32 --> 32) (if it wasn't done before...)
+        #print(f"{str_w_len(L32)} - L32") 
+
+        f_out32 = f_box(R32, subkey48)
+
+        R32 = xor(L32, f_out32)#f_box(R32, subkey48))
+
+        print(f"{str_w_len(R32)} - R32") 
+
+        L32 = L32_next
+        #print(f"{str_w_len(L32)} - L32") 
+        print(f"{str_w_len(R32)} - R32") 
+
         # Repeat 16 times
 
     # One more L/R swap at the end (just a clean swap)
+    swapped64 = R32 + L32
+    #print(f"{str_w_len(swapped64)} - swapped64")
     # Then a final permutation IP^-1
+    final_bits = permute(swapped64, db.ip_n1)
+    print(f"{str_w_len(final_bits)} - final_bits")
+
     # Yield ciphertext
+    ciphertext = bin_to_hex(final_bits)
+    print(ciphertext)
 
 
 if __name__ == "__main__":
     M = "0123456789ABCDEF"
     K = "133457799BBCDFF1"
+
     main(M, K)
