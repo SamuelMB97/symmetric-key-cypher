@@ -1,7 +1,7 @@
 #### Requirements:
 Should run on base python without additional packages.
 
-#### Function
+#### Function of encode
 To run from terminal:
     "python encode.py [your message] [your key]"
 
@@ -11,3 +11,8 @@ Prints the message, key and the ciphertext like so:
 M = 0123456789ABCDEF
 K = 133457799BBCDFF1
 C = 85E813540F0AB405
+
+
+#### Function of decode
+To run from terminal:
+    "python decode.py [your ciphertext] [your key]"
