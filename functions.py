@@ -1,4 +1,4 @@
-import data_boxes as bxs
+import data_boxes as db
 import converter as con
 
 
@@ -38,7 +38,7 @@ def loadkeys(master_key64):
     Takes a 64-bit master key and returns a generator for 16 28-bit
     subkeys
     """
-    k_perm_i_56 = permute(master_key64, bxs.pc_1)
+    k_perm_i_56 = permute(master_key64, db.pc_1)
 
     c28 = k_perm_i_56[:28]
     d28 = k_perm_i_56[28:]
@@ -55,7 +55,7 @@ def loadkeys(master_key64):
             c28 = rotate_left(c28)
             d28 = rotate_left(d28)
 
-        yield permute(c28 + d28, bxs.pc_2)
+        yield permute(c28 + d28, db.pc_2)
 
 
 def loadkeys_list(master_key64):
@@ -82,3 +82,49 @@ def xor(a, b):
     return "".join(result)
 
 
+def as_subsets(bits, num_sets):
+    """
+    Takes a string of bits and returns it as a list of lists with
+    length = num_sets
+    """
+    subsets = []
+
+    for i in range(0, len(bits), num_sets): # get 8 subsets of 6 from the bits
+        subsets.append([bits[i+j] for j in range(6)])
+
+    return subsets
+
+
+def s_box_transform(bits6:list, s_box):
+    """takes 6 bits as a list and an s_box, returns a bit string corresponding to their
+    evaluation"""
+    row = int(bits6[0] + bits6[5], 2)
+    col = int("".join(bits6[1:5]), 2)
+
+    val = s_box[row][col]
+    return f"{val:04b}"
+
+
+def run_s_boxes(subsets8_6):
+    """takes a list of 8 subsets of 6 bits each, puts each through the
+    appropriate s box, and returns a combined string of 32 bits"""
+    s_boxes = [db.s_1, db.s_2, db.s_3, db.s_4, db.s_5, db.s_6, db.s_7, db.s_8]
+    s_boxes_out8_4 = []
+
+    s_box_idx = 0
+    for subset6 in subsets8_6:
+        bits4 = s_box_transform(subset6, s_boxes[s_box_idx])
+        s_boxes_out8_4.append(bits4)
+        s_box_idx += 1
+    
+    return "".join(s_boxes_out8_4)
+
+
+def f_box(R32, subkey48):
+    """Takes the Right 32 bits and the 48 bit subkey for the round,
+    and runs the f box on it, returning a new 32 bit string"""
+    bits48 = xor(permute(R32, db.expand), subkey48)
+
+    s_boxed32 = run_s_boxes(as_subsets(bits48, 6))
+
+    return permute(s_boxed32, db.p)

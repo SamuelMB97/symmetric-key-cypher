@@ -1,42 +1,32 @@
 import sys
 import converter as con
 import functions as fn
-import data_boxes as bxs
+import data_boxes as db
 
 
 
-def back_round(lft, rht):
-    print("MADE IT THIS FAR!!! :)")
-    assert 0
+def back_round(subkey, lft, rht):
+    bits32 = fn.f_box(rht, subkey)
+    new_prevL32 = fn.xor(bits32, lft)
+    return (new_prevL32, rht)
+
 
 
 def decode_DES_from_hex16(cipher_hex, key):
     keys = fn.loadkeys_list(key)
-    """
-    for n, k in enumerate(keys):
-        print(f"{n}:\t{k}")
-    """
-    print(f"number of subkeys: {len(keys)}")
 
     bits64 = con.hex_str_to_bin(cipher_hex)
-    print(bits64)
-    permut1 = fn.back_permute(bits64, bxs.ip_n1)
-    print(permut1)
+    permut1 = fn.back_permute(bits64, db.ip_n1)
 
     R32 = permut1[:32]
     L32 = permut1[32:]
-    print(f"{L32} {R32}")
 
-    for subkey in keys:
-        back_round(lft=R32, rht=L32)
-    
+    for subkey in reversed(keys):
+        L32, R32 = back_round(subkey, lft=R32, rht=L32)
 
+    decoded = fn.permute(L32+R32, db.ip_n1)
 
-
-    # back_p1_inverse = backpermute(bits_64, db.ip_n1)
-
-
-    return False
+    return con.bin_str_to_hex(decoded)
 
 
 
@@ -51,7 +41,7 @@ def main(argv):
 
     print(f"C: {C}\nK: {K}")
     message = decode_DES_from_hex16(C, K)
-    print(f"C: {message}")
+    print(f"M: {message}")
 
 
 
