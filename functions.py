@@ -65,3 +65,20 @@ def loadkeys_list(master_key64):
         all_the_keys.append(subkey)
 
     return all_the_keys
+
+
+def xor(a, b):
+    """Takes 2 strings of equal length (in binary), returns xor string"""
+    length = len(a)
+    assert len(b) == length
+
+    result = []
+    for i in range(length):
+        if a[i] != b[i]:
+            result.append("1")
+        else:
+            result.append("0")
+
+    return "".join(result)
+
+
