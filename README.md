@@ -16,3 +16,10 @@ C = 85E813540F0AB405
 #### Function of decode
 To run from terminal:
     "python decode.py [your ciphertext] [your key]"
+
+Ciphertext and key should both be hexadecimal with length 16.
+
+Prints the ciphertext, key and the message like so:
+C = 0123456789ABCDEF
+K = 133457799BBCDFF1
+M = 85E813540F0AB405
